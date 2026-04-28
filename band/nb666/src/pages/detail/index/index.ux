@@ -1,0 +1,145 @@
+<template>
+  <div class="page">
+    <div class="top-zone" @click="handleTopTap" @touchstart="handleTouchStart" @touchend="handleTouchEnd">
+      <text class="top-tip">Double tap top area to exit</text>
+    </div>
+
+    <text class="title">{{ title }}</text>
+
+    <div class="content-panel">
+      <scroll class="content-scroll" scroll-y="true">
+        <div class="content-wrap">
+          <text class="content-text">{{ content }}</text>
+        </div>
+      </scroll>
+    </div>
+  </div>
+</template>
+
+<script>
+import router from '@system.router'
+import brightness from '@system.brightness'
+import { loadSelectedHistoryItem } from '../../../utils/link'
+
+export default {
+  private: {
+    title: 'Detail',
+    content: 'No content',
+    lastTopTapAt: 0,
+    touchStartX: 0,
+    touchStartY: 0
+  },
+
+  onShow() {
+    this.setKeepScreenOn(true)
+    loadSelectedHistoryItem(item => {
+      this.title = item && item.title ? item.title : 'Detail'
+      this.content = item && item.content ? item.content : 'No content'
+    })
+  },
+
+  onHide() {
+    this.setKeepScreenOn(false)
+  },
+
+  onDestroy() {
+    this.setKeepScreenOn(false)
+  },
+
+  setKeepScreenOn(enabled) {
+    brightness.setKeepScreenOn({
+      keepScreenOn: !!enabled,
+      fail: error => {
+        console.error('setKeepScreenOn failed', error)
+      }
+    })
+  },
+
+  handleTopTap() {
+    const now = Date.now()
+    if (now - this.lastTopTapAt < 350) {
+      this.$app.exit()
+      return
+    }
+    this.lastTopTapAt = now
+  },
+
+  handleTouchStart(event) {
+    this.touchStartX = event.touches && event.touches[0] ? event.touches[0].clientX : 0
+    this.touchStartY = event.touches && event.touches[0] ? event.touches[0].clientY : 0
+  },
+
+  handleTouchEnd(event) {
+    const endX = event.changedTouches && event.changedTouches[0] ? event.changedTouches[0].clientX : 0
+    const endY = event.changedTouches && event.changedTouches[0] ? event.changedTouches[0].clientY : 0
+    const deltaX = endX - this.touchStartX
+    const deltaY = endY - this.touchStartY
+    if (deltaX > 40 && Math.abs(deltaX) > Math.abs(deltaY) * 1.2) {
+      router.back()
+    }
+  }
+}
+</script>
+
+<style>
+.page {
+  width: 212px;
+  height: 520px;
+  flex-direction: column;
+  align-items: center;
+  background-color: #061118;
+  padding-top: 18px;
+}
+
+.top-zone {
+  width: 136px;
+  height: 20px;
+  justify-content: center;
+  align-items: center;
+  margin-bottom: 10px;
+}
+
+.top-tip {
+  color: #5d7b8a;
+  font-size: 8px;
+  text-align: center;
+}
+
+.title {
+  width: 132px;
+  color: #f4f8fb;
+  font-size: 15px;
+  text-align: center;
+}
+
+.content-panel {
+  width: 132px;
+  height: 390px;
+  border-radius: 22px;
+  background-color: #10222d;
+  padding: 10px;
+  margin-top: 10px;
+  flex-direction: column;
+  align-items: center;
+}
+
+.content-scroll {
+  width: 112px;
+  height: 360px;
+}
+
+.content-wrap {
+  width: 112px;
+  flex-direction: column;
+  align-items: center;
+  padding-bottom: 8px;
+}
+
+.content-text {
+  width: 112px;
+  color: #d6edf7;
+  font-size: 13px;
+  line-height: 20px;
+  text-align: left;
+}
+</style>

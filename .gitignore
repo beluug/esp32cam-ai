@@ -1,0 +1,44 @@
+# General
+Thumbs.db
+.DS_Store
+*.log
+
+# Android / Gradle
+.gradle/
+local.properties
+**/build/
+*.apk
+*.aab
+*.ap_
+
+# Android signing
+*.jks
+*.keystore
+keystore/
+
+# Band / Vela outputs
+**/.temp_*/
+**/dist/
+**/sign/
+*.rpk
+
+# Firmware outputs
+*.bin
+*.elf
+*.map
+*.partitions.bin
+*.bootloader.bin
+*.merged.bin
+compile_commands.json
+includes.cache
+file_opts
+flash_args
+sdkconfig
+
+# Node / package managers
+node_modules/
+
+# IDE
+.idea/
+.vscode/
+*.iml

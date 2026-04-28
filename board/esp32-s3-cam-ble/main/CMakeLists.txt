@@ -1,0 +1,19 @@
+idf_component_register(
+    SRCS
+        "app_main.c"
+        "camera_controller.c"
+        "ble_camera_service.c"
+        "image_chunker.c"
+        "wifi_preview_server.c"
+    INCLUDE_DIRS
+        "."
+    REQUIRES
+        esp32-camera
+        bt
+        nvs_flash
+        driver
+        esp_event
+        esp_http_server
+        esp_netif
+        esp_wifi
+)

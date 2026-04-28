@@ -1,0 +1,114 @@
+<template>
+  <div class="page" @touchstart="handleTouchStart" @touchend="handleTouchEnd">
+    <div class="top-exit-zone" @click="handleTopTap">
+      <text class="top-exit-tip">Top double tap to exit</text>
+    </div>
+    <text class="title">History</text>
+    <scroll class="scroll" scroll-y="true">
+      <div class="list">
+        <div class="history-card" for="{{ items }}" @click="openDetailById($item.id)" @longpress="removeItem($item.id)">
+          <text class="history-text">{{ $item.title }}</text>
+        </div>
+        <text class="empty-text" if="{{ !items.length }}">No history yet</text>
+      </div>
+    </scroll>
+  </div>
+</template>
+
+<script>
+import { deleteHistoryItem, loadDemoState, selectHistoryItemById } from '../../../utils/link'
+
+export default {
+  data: {
+    items: [],
+    lastTopTapAt: 0,
+    touchStartX: 0
+  },
+  onShow() {
+    this.refreshState()
+  },
+  refreshState() {
+    loadDemoState(state => {
+      this.items = state.history || []
+    })
+  },
+  handleTopTap() {
+    const now = Date.now()
+    if (now - this.lastTopTapAt < 350) {
+      this.$app.exit()
+      return
+    }
+    this.lastTopTapAt = now
+  },
+  handleTouchStart(event) {
+    this.touchStartX = event.touches && event.touches[0] ? event.touches[0].clientX : 0
+  },
+  handleTouchEnd(event) {
+    const endX = event.changedTouches && event.changedTouches[0] ? event.changedTouches[0].clientX : 0
+    if (endX - this.touchStartX > 40) {
+      this.$router.back()
+    }
+  },
+  removeItem(id) {
+    deleteHistoryItem(id)
+    this.refreshState()
+  },
+  openDetailById(id) {
+    selectHistoryItemById(id, item => {
+      if (item) {
+        this.$router.push({
+          uri: '/pages/detail/index'
+        })
+      }
+    })
+  }
+}
+</script>
+
+<style>
+.page {
+  flex-direction: column;
+  padding: 16px;
+  background-color: #061118;
+}
+.top-exit-zone {
+  width: 180px;
+  height: 28px;
+  justify-content: center;
+  align-items: center;
+  margin-bottom: 8px;
+}
+.top-exit-tip {
+  color: #5d7b8a;
+  font-size: 12px;
+}
+.title {
+  color: #f4f8fb;
+  font-size: 24px;
+  font-weight: 600;
+  margin-bottom: 12px;
+}
+.scroll {
+  width: 180px;
+  height: 400px;
+}
+.list {
+  flex-direction: column;
+}
+.history-card {
+  width: 180px;
+  border-radius: 24px;
+  background-color: #10222d;
+  padding: 12px;
+  margin-bottom: 10px;
+}
+.history-text {
+  color: #d6edf7;
+  font-size: 16px;
+  line-height: 22px;
+}
+.empty-text {
+  color: #88a9b8;
+  font-size: 14px;
+}
+</style>

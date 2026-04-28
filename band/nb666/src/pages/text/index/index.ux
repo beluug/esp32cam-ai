@@ -1,0 +1,501 @@
+<template>
+  <div class="page" @touchstart="handleTouchStart" @touchend="handleTouchEnd">
+    <div class="top-zone" @click="handleTopTap">
+      <text class="top-tip">Double tap top to exit</text>
+    </div>
+
+    <div class="history-panel">
+      <text class="panel-title">History</text>
+      <scroll class="history-scroll" scroll-y="true">
+        <div class="history-list">
+          <div class="history-item" for="{{ items }}">
+            <div class="history-open-zone" @click="openDetailById($item.id)">
+              <text class="history-title">{{ $item.title }}</text>
+              <text class="history-open-tip">Tap to open detail</text>
+            </div>
+            <div class="history-delete-zone" @click="removeItem($item.id)">
+              <text class="history-delete">Delete</text>
+            </div>
+          </div>
+          <text class="empty-text" if="{{ !items.length }}">No history yet</text>
+        </div>
+      </scroll>
+    </div>
+
+    <div
+      class="receiver-panel"
+      @touchstart="handleReceiverTouchStart"
+      @touchmove="handleReceiverTouchMove"
+      @touchend="handleReceiverTouchEnd"
+    >
+      <text class="panel-title">Receive</text>
+      <text class="status-text">{{ currentStatus }}</text>
+      <text class="status-tip">{{ connectionTip }}</text>
+      <scroll class="content-scroll" scroll-y="true">
+        <div class="content-wrap">
+          <text class="content-text">{{ latestText }}</text>
+        </div>
+      </scroll>
+    </div>
+  </div>
+</template>
+
+<script>
+import router from '@system.router'
+import interconnect from '@system.interconnect'
+import brightness from '@system.brightness'
+import vibrator from '@system.vibrator'
+import {
+  deleteHistoryItem,
+  loadBandState,
+  saveReceivedMessage,
+  selectHistoryItemById,
+  setCurrentStatus,
+  updateLiveMessage
+} from '../../../utils/link'
+
+let conn = null
+
+function normalizeIncoming(raw) {
+  if (!raw) {
+    return null
+  }
+
+  if (typeof raw === 'object') {
+    return {
+      type: raw.type || '',
+      title: raw.title || '',
+      content: raw.content || JSON.stringify(raw)
+    }
+  }
+
+  const text = String(raw)
+  try {
+    const parsed = JSON.parse(text)
+    return {
+      type: parsed.type || '',
+      title: parsed.title || '',
+      content: parsed.content || text
+    }
+  } catch (error) {
+    return {
+      type: '',
+      title: '',
+      content: text
+    }
+  }
+}
+
+export default {
+  private: {
+    items: [],
+    latestText: 'Waiting for phone text...',
+    currentStatus: 'Waiting',
+    connectionTip: 'Open the Android app and send text.',
+    lastTopTapAt: 0,
+    touchStartX: 0,
+    touchStartY: 0,
+    receiverTouchStartX: 0,
+    receiverTouchStartY: 0,
+    receiverTouchMoved: false,
+    receiverLongPressTriggered: false,
+    receiverLongPressTimer: null,
+    receiverTapHistory: []
+  },
+
+  onShow() {
+    this.setKeepScreenOn(true)
+    this.refreshState()
+    this.initInterconnect()
+  },
+
+  onHide() {
+    this.setKeepScreenOn(false)
+  },
+
+  onDestroy() {
+    this.setKeepScreenOn(false)
+  },
+
+  refreshState() {
+    loadBandState(state => {
+      this.items = state.history || []
+      this.latestText = state.latestText || 'Waiting for phone text...'
+      this.currentStatus = state.currentStatus || 'Waiting'
+    })
+  },
+
+  initInterconnect() {
+    if (!conn) {
+      conn = interconnect.instance()
+    }
+
+    conn.onopen = () => {
+      this.currentStatus = 'Connected'
+      this.connectionTip = 'Waiting for incoming phone text.'
+      setCurrentStatus('Connected')
+    }
+
+    conn.onmessage = data => {
+      const message = normalizeIncoming(data && data.data)
+      if (!message || !message.content) {
+        return
+      }
+      if (message.type === 'status_update' || message.type === 'status_vibrate' || message.type === 'status_vibrate_double') {
+        updateLiveMessage(message)
+        if (message.type === 'status_vibrate') {
+          this.vibrateShort()
+        } else if (message.type === 'status_vibrate_double') {
+          this.vibrateDouble()
+        }
+        this.connectionTip = 'Live analysis status updated.'
+      } else {
+        saveReceivedMessage(message)
+        this.connectionTip = 'Latest text saved to history.'
+      }
+      this.refreshState()
+    }
+
+    conn.onclose = data => {
+      this.currentStatus = 'Disconnected'
+      this.connectionTip = data && data.data ? String(data.data) : 'Phone link closed.'
+      setCurrentStatus('Disconnected')
+    }
+
+    conn.onerror = data => {
+      this.currentStatus = 'Receive failed'
+      this.connectionTip = data && data.data ? String(data.data) : 'interconnect error'
+      setCurrentStatus('Receive failed')
+    }
+
+    conn.getReadyState({
+      success: data => {
+        if (data.status === 1) {
+          this.currentStatus = 'Connected'
+          this.connectionTip = 'Waiting for incoming phone text.'
+          setCurrentStatus('Connected')
+        } else if (data.status === 2) {
+          this.currentStatus = 'Disconnected'
+          this.connectionTip = 'Install the paired Android app build first.'
+          setCurrentStatus('Disconnected')
+        } else {
+          this.currentStatus = 'Connecting'
+          this.connectionTip = 'Checking phone link...'
+          setCurrentStatus('Connecting')
+        }
+      },
+      fail: () => {
+        this.currentStatus = 'Receive failed'
+        this.connectionTip = 'Unable to query interconnect state.'
+        setCurrentStatus('Receive failed')
+      }
+    })
+  },
+
+  setKeepScreenOn(enabled) {
+    brightness.setKeepScreenOn({
+      keepScreenOn: !!enabled,
+      fail: error => {
+        console.error('setKeepScreenOn failed', error)
+      }
+    })
+  },
+
+  vibrateShort() {
+    vibrator.vibrate({
+      mode: 'short',
+      fail: error => {
+        console.error('vibrate failed', error)
+      }
+    })
+  },
+
+  vibrateDouble() {
+    this.vibrateShort()
+    setTimeout(() => {
+      this.vibrateShort()
+    }, 260)
+  },
+
+  sendCommandToPhone(action) {
+    if (!conn) {
+      this.initInterconnect()
+    }
+    if (!conn) {
+      this.connectionTip = 'Phone link is not ready yet.'
+      return
+    }
+
+    conn.send({
+      data: {
+        type: 'watch_command',
+        title: '手环指令',
+        content: action,
+        sentAt: Date.now()
+      },
+      success: () => {
+        if (action === 'timed_capture_request') {
+          this.connectionTip = 'Timed capture command sent from watch.'
+        } else {
+          this.connectionTip = 'Analyze command sent from watch.'
+        }
+      },
+      fail: error => {
+        this.connectionTip = error && error.data ? String(error.data) : 'Failed to send watch command.'
+      }
+    })
+  },
+
+  clearReceiverLongPressTimer() {
+    if (this.receiverLongPressTimer) {
+      clearTimeout(this.receiverLongPressTimer)
+      this.receiverLongPressTimer = null
+    }
+  },
+
+  handleReceiverTouchStart(event) {
+    const point = event.touches && event.touches[0] ? event.touches[0] : null
+    this.receiverTouchStartX = point ? point.clientX : 0
+    this.receiverTouchStartY = point ? point.clientY : 0
+    this.receiverTouchMoved = false
+    this.receiverLongPressTriggered = false
+    this.clearReceiverLongPressTimer()
+    this.receiverLongPressTimer = setTimeout(() => {
+      if (this.receiverTouchMoved) {
+        return
+      }
+      this.receiverLongPressTriggered = true
+      this.sendCommandToPhone('analyze_request')
+    }, 3000)
+  },
+
+  handleReceiverTouchMove(event) {
+    const point = event.touches && event.touches[0] ? event.touches[0] : null
+    if (!point) {
+      return
+    }
+    const deltaX = point.clientX - this.receiverTouchStartX
+    const deltaY = point.clientY - this.receiverTouchStartY
+    if (Math.abs(deltaX) > 18 || Math.abs(deltaY) > 18) {
+      this.receiverTouchMoved = true
+      this.clearReceiverLongPressTimer()
+    }
+  },
+
+  handleReceiverTouchEnd() {
+    this.clearReceiverLongPressTimer()
+    if (this.receiverTouchMoved || this.receiverLongPressTriggered) {
+      return
+    }
+
+    const now = Date.now()
+    const windowStart = now - 3000
+    const taps = (this.receiverTapHistory || []).filter(item => item >= windowStart)
+    taps.push(now)
+    this.receiverTapHistory = taps
+    if (taps.length >= 3) {
+      this.receiverTapHistory = []
+      this.sendCommandToPhone('timed_capture_request')
+    }
+  },
+
+  removeItem(id) {
+    deleteHistoryItem(id)
+    this.refreshState()
+  },
+
+  openDetailById(id) {
+    selectHistoryItemById(id, item => {
+      if (item) {
+        router.push({
+          uri: '/pages/detail/index'
+        })
+      }
+    })
+  },
+
+  handleTopTap() {
+    const now = Date.now()
+    if (now - this.lastTopTapAt < 350) {
+      this.$app.exit()
+      return
+    }
+    this.lastTopTapAt = now
+  },
+
+  handleTouchStart(event) {
+    this.touchStartX = event.touches && event.touches[0] ? event.touches[0].clientX : 0
+    this.touchStartY = event.touches && event.touches[0] ? event.touches[0].clientY : 0
+  },
+
+  handleTouchEnd(event) {
+    const endX = event.changedTouches && event.changedTouches[0] ? event.changedTouches[0].clientX : 0
+    const endY = event.changedTouches && event.changedTouches[0] ? event.changedTouches[0].clientY : 0
+    const deltaX = endX - this.touchStartX
+    const deltaY = endY - this.touchStartY
+    if (deltaX > 40 && Math.abs(deltaX) > Math.abs(deltaY) * 1.2) {
+      this.$app.exit()
+    }
+  }
+}
+</script>
+
+<style>
+.page {
+  width: 212px;
+  height: 520px;
+  flex-direction: column;
+  align-items: center;
+  background-color: #061118;
+  padding-top: 8px;
+}
+
+.top-zone {
+  width: 154px;
+  height: 20px;
+  justify-content: center;
+  align-items: center;
+  margin-bottom: 6px;
+}
+
+.top-tip {
+  color: #5d7b8a;
+  font-size: 9px;
+  text-align: center;
+}
+
+.history-panel {
+  width: 180px;
+  height: 220px;
+  border-radius: 16px;
+  background-color: #10222d;
+  padding: 8px 7px;
+  margin-bottom: 8px;
+  flex-direction: column;
+  align-items: center;
+}
+
+.receiver-panel {
+  width: 180px;
+  height: 238px;
+  border-radius: 16px;
+  background-color: #10222d;
+  padding: 8px 7px;
+  flex-direction: column;
+  align-items: center;
+}
+
+.panel-title {
+  width: 168px;
+  color: #f4f8fb;
+  font-size: 18px;
+  text-align: center;
+}
+
+.history-scroll {
+  width: 168px;
+  height: 176px;
+  margin-top: 6px;
+}
+
+.history-list {
+  flex-direction: column;
+}
+
+.history-item {
+  width: 168px;
+  border-radius: 12px;
+  background-color: #183544;
+  min-height: 94px;
+  padding: 8px 8px;
+  margin-bottom: 8px;
+  flex-direction: column;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.history-open-zone {
+  width: 154px;
+  min-height: 52px;
+  border-radius: 10px;
+  padding: 6px 4px;
+  justify-content: center;
+  align-items: center;
+}
+
+.history-title {
+  width: 154px;
+  color: #d6edf7;
+  font-size: 15px;
+  text-align: center;
+}
+
+.history-open-tip {
+  width: 154px;
+  color: #7fa5b6;
+  font-size: 10px;
+  text-align: center;
+  margin-top: 4px;
+}
+
+.history-delete-zone {
+  width: 120px;
+  height: 24px;
+  border-radius: 12px;
+  background-color: #244659;
+  justify-content: center;
+  align-items: center;
+}
+
+.history-delete {
+  width: 120px;
+  color: #d6edf7;
+  font-size: 11px;
+  text-align: center;
+}
+
+.empty-text {
+  width: 168px;
+  color: #88a9b8;
+  font-size: 13px;
+  text-align: center;
+  margin-top: 14px;
+}
+
+.status-text {
+  width: 168px;
+  color: #d6edf7;
+  font-size: 16px;
+  text-align: center;
+  margin-top: 3px;
+}
+
+.status-tip {
+  width: 168px;
+  color: #7fa5b6;
+  font-size: 10px;
+  text-align: center;
+  margin-top: 3px;
+}
+
+.content-scroll {
+  width: 168px;
+  height: 154px;
+  margin-top: 6px;
+}
+
+.content-wrap {
+  width: 168px;
+  flex-direction: column;
+  align-items: center;
+  padding-bottom: 8px;
+}
+
+.content-text {
+  width: 168px;
+  color: #d6edf7;
+  font-size: 15px;
+  line-height: 21px;
+  text-align: left;
+}
+</style>

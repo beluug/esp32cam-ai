@@ -1,0 +1,84 @@
+<template>
+  <div class="page">
+    <div class="card">
+      <text class="title">Band Bridge</text>
+      <text class="subtitle">Simulator Safe Home</text>
+      <text class="tip">If you can see this page, the app is running.</text>
+    </div>
+
+    <div class="menu-btn" @click="openControl">
+      <text class="menu-text">Open Control</text>
+    </div>
+
+    <div class="menu-btn" @click="openText">
+      <text class="menu-text">Open Text</text>
+    </div>
+
+    <div class="menu-btn" @click="openHistory">
+      <text class="menu-text">Open History</text>
+    </div>
+  </div>
+</template>
+
+<script>
+export default {
+  openControl() {
+    this.$router.push({ uri: '/pages/control/index' })
+  },
+  openText() {
+    this.$router.push({ uri: '/pages/text/index' })
+  },
+  openHistory() {
+    this.$router.push({ uri: '/pages/history/index' })
+  }
+}
+</script>
+
+<style>
+.page {
+  width: 212px;
+  height: 520px;
+  flex-direction: column;
+  align-items: center;
+  background-color: #061118;
+  padding-top: 24px;
+}
+.card {
+  width: 180px;
+  padding: 16px;
+  border-radius: 24px;
+  background-color: #10222d;
+  flex-direction: column;
+  align-items: center;
+  margin-bottom: 16px;
+}
+.title {
+  color: #f4f8fb;
+  font-size: 26px;
+  font-weight: 600;
+}
+.subtitle {
+  color: #99b7c6;
+  font-size: 15px;
+  margin-top: 8px;
+}
+.tip {
+  color: #d6edf7;
+  font-size: 14px;
+  text-align: center;
+  margin-top: 12px;
+}
+.menu-btn {
+  width: 180px;
+  height: 52px;
+  border-radius: 24px;
+  background-color: #1e6279;
+  justify-content: center;
+  align-items: center;
+  margin-bottom: 12px;
+}
+.menu-text {
+  color: #f4f8fb;
+  font-size: 18px;
+}
+</style>

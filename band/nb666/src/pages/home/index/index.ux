@@ -1,0 +1,55 @@
+<template>
+  <div class="demo-page">
+    <text class="title">BandBridge Home</text>
+    <text class="subtitle">If you can see this, the page is alive.</text>
+    <input class="btn" type="button" value="Open Text" onclick="openText" />
+  </div>
+</template>
+
+<script>
+import router from '@system.router'
+
+export default {
+  private: {},
+  openText() {
+    router.push({
+      uri: '/pages/text/index'
+    })
+  }
+}
+</script>
+
+<style>
+.demo-page {
+  width: 212px;
+  height: 520px;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  background-color: #061118;
+}
+
+.title {
+  color: #ffffff;
+  font-size: 24px;
+  text-align: center;
+}
+
+.subtitle {
+  width: 180px;
+  color: #cfe4ee;
+  font-size: 14px;
+  text-align: center;
+  margin-top: 12px;
+}
+
+.btn {
+  width: 180px;
+  height: 44px;
+  margin-top: 20px;
+  border-radius: 22px;
+  background-color: #1e6279;
+  font-size: 18px;
+  color: #ffffff;
+}
+</style>

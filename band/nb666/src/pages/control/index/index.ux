@@ -1,0 +1,115 @@
+<template>
+  <div class="page" @touchstart="handleTouchStart" @touchend="handleTouchEnd">
+    <div class="top-exit-zone" @click="handleTopTap">
+      <text class="top-exit-tip">顶端双击退出</text>
+    </div>
+    <div class="header-card">
+      <text class="title">Control</text>
+      <text class="status-text">{{ currentStatus }}</text>
+    </div>
+
+    <input class="action-btn capture" type="button" value="拍照" @click="capture" />
+    <input class="action-btn upload" type="button" value="上传分析" @click="upload" />
+    <input class="action-btn test" type="button" value="测试连接" @click="test" />
+  </div>
+</template>
+
+<script>
+import { loadDemoState, sendDemoMessage } from '../../../utils/link'
+
+export default {
+  data: {
+    currentStatus: '等待操作',
+    lastTopTapAt: 0,
+    touchStartX: 0
+  },
+  onShow() {
+    loadDemoState(state => {
+      this.currentStatus = state.receiving ? '接收中' : (state.currentStatus || '等待操作')
+    })
+  },
+  handleTopTap() {
+    const now = Date.now()
+    if (now - this.lastTopTapAt < 350) {
+      this.$app.exit()
+      return
+    }
+    this.lastTopTapAt = now
+  },
+  handleTouchStart(event) {
+    this.touchStartX = event.touches && event.touches[0] ? event.touches[0].clientX : 0
+  },
+  handleTouchEnd(event) {
+    const endX = event.changedTouches && event.changedTouches[0] ? event.changedTouches[0].clientX : 0
+    if (endX - this.touchStartX > 40) {
+      this.$router.back()
+    }
+  },
+  capture() {
+    sendDemoMessage({ type: 'capture', requestId: String(Date.now()), ts: Date.now() })
+    this.currentStatus = '等待中'
+  },
+  upload() {
+    sendDemoMessage({ type: 'upload', requestId: String(Date.now()), ts: Date.now() })
+    this.currentStatus = '接收中'
+  },
+  test() {
+    sendDemoMessage({ type: 'test_connection', requestId: String(Date.now()), ts: Date.now() })
+    this.currentStatus = '接收中'
+  }
+}
+</script>
+
+<style>
+.page {
+  flex-direction: column;
+  padding: 16px;
+  background-color: #061118;
+}
+.top-exit-zone {
+  width: 180px;
+  height: 28px;
+  justify-content: center;
+  align-items: center;
+  margin-bottom: 8px;
+}
+.top-exit-tip {
+  color: #5d7b8a;
+  font-size: 12px;
+}
+.header-card {
+  width: 180px;
+  border-radius: 26px;
+  padding: 14px;
+  margin-bottom: 14px;
+  background-color: #10222d;
+}
+.title {
+  color: #f4f8fb;
+  font-size: 24px;
+  font-weight: 600;
+}
+.status-text {
+  color: #cbe4ef;
+  font-size: 16px;
+  line-height: 22px;
+  margin-top: 10px;
+}
+.action-btn {
+  width: 180px;
+  height: 60px;
+  margin-bottom: 12px;
+  border-radius: 28px;
+  color: #f4f8fb;
+  font-size: 18px;
+}
+.capture {
+  background-color: #2c6d73;
+}
+.upload {
+  background-color: #235a84;
+}
+.test {
+  background-color: #3d4e7d;
+}
+</style>

@@ -1,0 +1,61 @@
+{
+  "package": "com.demo.bandbridge",
+  "name": "BandBridgeWatch",
+  "versionName": "0.1.0",
+  "versionCode": 1,
+  "minPlatformVersion": 1200,
+  "icon": "/common/logo.png",
+  "deviceTypeList": [
+    "watch"
+  ],
+  "features": [
+    {
+      "name": "system.router"
+    },
+    {
+      "name": "system.storage"
+    },
+    {
+      "name": "system.interconnect"
+    },
+    {
+      "name": "system.brightness"
+    },
+    {
+      "name": "system.vibrator"
+    }
+  ],
+  "config": {
+    "logLevel": "log",
+    "designWidth": "device-width"
+  },
+  "router": {
+    "entry": "pages/text/index",
+    "pages": {
+      "pages/index": {
+        "component": "index"
+      },
+      "pages/detail": {
+        "component": "detail"
+      },
+      "pages/home/index": {
+        "component": "index"
+      },
+      "pages/control/index": {
+        "component": "index"
+      },
+      "pages/text/index": {
+        "component": "index"
+      },
+      "pages/history/index": {
+        "component": "index"
+      },
+      "pages/detail/index": {
+        "component": "index"
+      }
+    }
+  },
+  "display": {
+    "backgroundColor": "#061118"
+  }
+}
